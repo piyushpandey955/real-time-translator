@@ -1,0 +1,39 @@
+{
+  "name": "real-time-translator",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:extension": "vite build --mode extension --watch && npm run copy:extension",
+    "build": "vite build",
+    "build:web": "vite build --mode production",
+    "build:extension": "vite build --mode extension && npm run copy:extension",
+    "copy:extension": "mkdir -p dist && cp -r extension-build/* dist/ && cp popup-simple.html dist/popup.html && cp manifest-updated.json dist/manifest.json",
+    "build:all": "npm run build:web && npm run build:extension",
+    "quick:extension": "npm run build:extension && echo '🚀 Extension built! Load from: front-end/dist/'",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "preview:web": "vite preview --outDir web-build"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.13",
+    "lucide-react": "^0.544.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.36.0",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^5.0.3",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9.36.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "globals": "^16.4.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.13",
+    "vite": "^7.1.7"
+  }
+}
