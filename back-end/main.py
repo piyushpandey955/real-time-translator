@@ -1,10 +1,14 @@
 import os
+import base64
+import io
+import tempfile
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from transformers import pipeline
 import torch
 from deepmultilingualpunctuation import PunctuationModel
+import whisper
 
 # --- Configuration ---
 # Check for available device (GPU or CPU)
@@ -41,6 +45,11 @@ class TranslationRequest(BaseModel):
     text: str
     source_language: str # e.g., "English"
     target_language: str # e.g., "Spanish"
+
+class AudioTranscriptionRequest(BaseModel):
+    audio_data: str  # Base64 encoded audio
+    source_language: str
+    target_language: str
 
 # --- Model Loading and Caching ---
 model_cache = {}
@@ -287,6 +296,23 @@ def get_nllb_translator():
         print(f"❌ Failed to load NLLB model {model_name}. Error: {e}")
         raise e
 
+def get_whisper_model():
+    """Load and cache Whisper model for audio transcription."""
+    model_name = "whisper"
+    
+    if model_name in model_cache:
+        return model_cache[model_name]
+    
+    try:
+        print("Loading Whisper model...")
+        whisper_model = whisper.load_model("base")  # Use base model for good balance of speed/accuracy
+        model_cache[model_name] = whisper_model
+        print("✅ Whisper model loaded successfully.")
+        return whisper_model
+    except Exception as e:
+        print(f"❌ Failed to load Whisper model. Error: {e}")
+        return None
+
 # --- API Endpoints ---
 @app.get("/", tags=["Health Check"])
 def read_root():
@@ -339,6 +365,76 @@ async def translate_text(request: TranslationRequest):
     except Exception as e:
         print(f"An error occurred during translation: {e}")
         raise HTTPException(status_code=500, detail="Failed to translate text.")
+
+@app.post("/api/transcribe-and-translate", tags=["Audio Processing"])
+async def transcribe_and_translate(request: AudioTranscriptionRequest):
+    """
+    Transcribe audio using Whisper and then translate the result.
+    """
+    try:
+        # Decode base64 audio
+        audio_bytes = base64.b64decode(request.audio_data)
+        
+        # Get Whisper model
+        whisper_model = get_whisper_model()
+        if not whisper_model:
+            raise HTTPException(status_code=500, detail="Whisper model not available")
+        
+        # Create temporary audio file
+        with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as temp_audio:
+            temp_audio.write(audio_bytes)
+            temp_audio_path = temp_audio.name
+        
+        try:
+            # Transcribe using Whisper
+            result = whisper_model.transcribe(temp_audio_path)
+            transcribed_text = result["text"].strip()
+            
+            if not transcribed_text:
+                return {
+                    "transcribed_text": "", 
+                    "translated_text": "",
+                    "detected_language": result.get("language", "unknown")
+                }
+            
+            # Step 1: Restore punctuation
+            punctuation_model = get_punctuation_model()
+            if punctuation_model:
+                punctuated_text = punctuation_model.restore_punctuation(transcribed_text)
+                print(f"Transcribed: '{transcribed_text}' -> Punctuated: '{punctuated_text}'")
+            else:
+                punctuated_text = transcribed_text
+                print(f"Punctuation model not available, using transcribed text: '{transcribed_text}'")
+            
+            # Step 2: Translate the transcribed text
+            source_code = nllb_language_codes.get(request.source_language)
+            target_code = nllb_language_codes.get(request.target_language)
+            
+            if not source_code or not target_code:
+                raise ValueError("Unsupported language specified.")
+            
+            translator = get_nllb_translator()
+            translation_result = translator(
+                punctuated_text, 
+                src_lang=source_code, 
+                tgt_lang=target_code
+            )
+            
+            translated_text = translation_result[0]['translation_text'].strip()
+            
+            return {
+                "transcribed_text": punctuated_text,
+                "translated_text": translated_text,
+                "detected_language": result.get("language", "unknown")
+            }
+            
+        finally:
+            # Clean up temporary file
+            os.unlink(temp_audio_path)
+            
+    except Exception as e:
+        print(f"An error occurred during transcription: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to process audio: {str(e)}")
 
 # Auto-load models at startup (optional)
 @app.on_event("startup")

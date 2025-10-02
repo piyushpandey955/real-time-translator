@@ -283,6 +283,235 @@ const speechRecognitionLanguages = {
 // Check for browser support for the Web Speech API
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
+// Custom hook for audio capture functionality
+const useAudioCapture = () => {
+    const [audioStream, setAudioStream] = useState(null);
+    const [isCapturing, setIsCapturing] = useState(false);
+    const audioContextRef = useRef(null);
+    const analyserRef = useRef(null);
+    const mediaRecorderRef = useRef(null);
+    const chunksRef = useRef([]);
+    const processingIntervalRef = useRef(null);
+
+    // Check browser support
+    const checkBrowserSupport = () => {
+        const issues = [];
+        
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+            issues.push('getDisplayMedia not supported');
+        }
+        
+        if (!window.AudioContext && !window.webkitAudioContext) {
+            issues.push('AudioContext not supported');
+        }
+        
+        return issues;
+    };
+
+    const startSystemAudioCapture = async (onAudioProcessed) => {
+        try {
+            // Check browser support first
+            const supportIssues = checkBrowserSupport();
+            if (supportIssues.length > 0) {
+                throw new Error(`Browser compatibility issues: ${supportIssues.join(', ')}`);
+            }
+
+            console.log('🎤 Requesting display media with audio...');
+            
+            // Request screen share with audio
+            const stream = await navigator.mediaDevices.getDisplayMedia({
+                video: true, // Required for getDisplayMedia
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    sampleRate: 44100
+                }
+            });
+
+            console.log('📺 Display media obtained, checking audio tracks...');
+
+            // Check if audio track is available
+            const audioTracks = stream.getAudioTracks();
+            if (audioTracks.length === 0) {
+                throw new Error('No audio track available. Please ensure "Share system audio" is enabled.');
+            }
+
+            console.log(`🔊 Audio tracks found: ${audioTracks.length}`);
+            audioTracks.forEach((track, index) => {
+                console.log(`Track ${index}:`, track.label, track.kind, track.enabled);
+            });
+
+            setAudioStream(stream);
+            setIsCapturing(true);
+
+            // Set up Web Audio API for real-time processing
+            console.log('🎛️ Setting up Web Audio API processing...');
+            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Create audio source from stream
+            const source = audioContextRef.current.createMediaStreamSource(stream);
+            analyserRef.current = audioContextRef.current.createAnalyser();
+            analyserRef.current.fftSize = 2048;
+            
+            // Connect source to analyser
+            source.connect(analyserRef.current);
+            
+            // Set up real-time audio processing using ScriptProcessorNode
+            const bufferSize = 4096;
+            const processor = audioContextRef.current.createScriptProcessor(bufferSize, 1, 1);
+            
+            // Store audio chunks for processing
+            const audioChunks = [];
+            let chunkCount = 0;
+            const CHUNKS_PER_BATCH = Math.floor((3 * 44100) / bufferSize); // About 3 seconds
+            
+            processor.onaudioprocess = (event) => {
+                const inputBuffer = event.inputBuffer;
+                const inputData = inputBuffer.getChannelData(0);
+                
+                // Store audio data
+                audioChunks.push(new Float32Array(inputData));
+                chunkCount++;
+                
+                // Process every 3 seconds worth of audio
+                if (chunkCount >= CHUNKS_PER_BATCH) {
+                    console.log('🔄 Processing audio batch...');
+                    processAudioChunks([...audioChunks], onAudioProcessed);
+                    audioChunks.length = 0; // Clear chunks
+                    chunkCount = 0;
+                }
+            };
+            
+            // Connect the processor
+            source.connect(processor);
+            processor.connect(audioContextRef.current.destination);
+            
+            // Store processor reference for cleanup
+            mediaRecorderRef.current = processor;
+
+            console.log('✅ System audio capture started with Web Audio API');
+            return stream;
+        } catch (error) {
+            console.error('❌ Failed to capture system audio:', error);
+            throw error;
+        }
+    };
+
+    const processAudioChunks = async (chunks, onAudioProcessed) => {
+        try {
+            console.log(`� Processing ${chunks.length} audio chunks`);
+            
+            // Combine all chunks into a single buffer
+            const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+            const combinedBuffer = new Float32Array(totalLength);
+            
+            let offset = 0;
+            for (const chunk of chunks) {
+                combinedBuffer.set(chunk, offset);
+                offset += chunk.length;
+            }
+            
+            // Convert Float32Array to WAV format
+            const wavBuffer = floatTo16BitPCM(combinedBuffer);
+            const wavBlob = new Blob([wavBuffer], { type: 'audio/wav' });
+            
+            // Convert to base64 for transmission
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const base64Audio = reader.result.split(',')[1];
+                if (onAudioProcessed) {
+                    onAudioProcessed(base64Audio);
+                }
+            };
+            reader.readAsDataURL(wavBlob);
+            
+        } catch (error) {
+            console.error('Failed to process audio chunks:', error);
+        }
+    };
+
+    // Helper function to convert Float32Array to 16-bit PCM WAV
+    const floatTo16BitPCM = (float32Array) => {
+        const sampleRate = 44100;
+        const numChannels = 1;
+        const bitsPerSample = 16;
+        const bytesPerSample = bitsPerSample / 8;
+        const blockAlign = numChannels * bytesPerSample;
+        const byteRate = sampleRate * blockAlign;
+        const dataLength = float32Array.length * bytesPerSample;
+        const bufferLength = 44 + dataLength;
+        
+        const buffer = new ArrayBuffer(bufferLength);
+        const view = new DataView(buffer);
+        
+        // WAV header
+        const writeString = (offset, string) => {
+            for (let i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        };
+        
+        writeString(0, 'RIFF');
+        view.setUint32(4, bufferLength - 8, true);
+        writeString(8, 'WAVE');
+        writeString(12, 'fmt ');
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true);
+        view.setUint16(22, numChannels, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, byteRate, true);
+        view.setUint16(32, blockAlign, true);
+        view.setUint16(34, bitsPerSample, true);
+        writeString(36, 'data');
+        view.setUint32(40, dataLength, true);
+        
+        // Convert float samples to 16-bit PCM
+        let offset = 44;
+        for (let i = 0; i < float32Array.length; i++) {
+            const sample = Math.max(-1, Math.min(1, float32Array[i]));
+            view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+            offset += 2;
+        }
+        
+        return buffer;
+    };
+
+    const stopAudioCapture = () => {
+        // Clear processing interval
+        if (processingIntervalRef.current) {
+            clearInterval(processingIntervalRef.current);
+            processingIntervalRef.current = null;
+        }
+
+        // Disconnect audio processor
+        if (mediaRecorderRef.current && mediaRecorderRef.current.disconnect) {
+            mediaRecorderRef.current.disconnect();
+            mediaRecorderRef.current = null;
+        }
+
+        // Stop audio stream
+        if (audioStream) {
+            audioStream.getTracks().forEach(track => track.stop());
+            setAudioStream(null);
+        }
+        
+        // Close audio context
+        if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+            audioContextRef.current.close();
+        }
+        
+        setIsCapturing(false);
+        console.log('🛑 Audio capture stopped');
+    };
+
+    return {
+        audioStream,
+        isCapturing,
+        startSystemAudioCapture,
+        stopAudioCapture
+    };
+};
+
 function TranslatorApp({ isExtension = false, platformName = 'Meeting Platform' }) {
     // State management
     const [sourceLang, setSourceLang] = useState('English');
@@ -291,10 +520,14 @@ function TranslatorApp({ isExtension = false, platformName = 'Meeting Platform' 
     const [interimTranscript, setInterimTranscript] = useState('');
     const [finalTranscript, setFinalTranscript] = useState('');
     const [translatedText, setTranslatedText] = useState('');
-    const [statusMessage, setStatusMessage] = useState('Click "Start Translating" to begin.');
+    const [statusMessage, setStatusMessage] = useState('Choose audio source and click "Start Translating" to begin.');
+    const [captureMode, setCaptureMode] = useState('microphone'); // 'microphone' or 'system'
     
     // Using useRef to hold the full transcript to avoid stale state in callbacks
     const transcriptRef = useRef('');
+    
+    // Audio capture hooks
+    const { audioStream, isCapturing, startSystemAudioCapture, stopAudioCapture } = useAudioCapture();
     
     // Track if user manually stopped (to prevent auto-restart)
     const [shouldContinueListening, setShouldContinueListening] = useState(false);
@@ -334,6 +567,26 @@ function TranslatorApp({ isExtension = false, platformName = 'Meeting Platform' 
         setStatusMessage('Target language updated.');
     };
 
+    // Capture mode change handler
+    const handleCaptureModeChange = (newMode) => {
+        // Stop any current recording/capturing when switching modes
+        if (isListening || shouldContinueListening || isCapturing) {
+            const recognition = recognitionRef.current;
+            setShouldContinueListening(false);
+            if (recognition) recognition.stop();
+            stopAudioCapture();
+            setIsListening(false);
+        }
+        
+        setCaptureMode(newMode);
+        
+        if (newMode === 'system') {
+            setStatusMessage('📺 System audio mode selected. Click "Start Capturing" to capture meeting audio.');
+        } else {
+            setStatusMessage('🎤 Microphone mode selected. Click "Start Listening" to capture your voice.');
+        }
+    };
+
     // API call to the backend for translation
     const handleTranslate = async (text, source, target) => {
         if (!text.trim()) return;
@@ -359,11 +612,55 @@ function TranslatorApp({ isExtension = false, platformName = 'Meeting Platform' 
             // Replace the entire translated text instead of appending chunks
             setTranslatedText(data.translated_text);
             console.log('Setting translated text:', data.translated_text);
-            setStatusMessage(isListening ? 'Listening... (Translation updated)' : 'Translation complete.');
+            setStatusMessage(isListening || isCapturing ? 'Processing... (Translation updated)' : 'Translation complete.');
 
         } catch (error) {
             console.error('Translation error:', error);
             setStatusMessage(`Error: ${error.message}`);
+        }
+    };
+
+    // Handle system audio processing via server-side speech recognition
+    const handleSystemAudioProcessing = async (base64Audio) => {
+        try {
+            setStatusMessage('🔄 Processing captured audio...');
+            
+            const response = await fetch('http://localhost:8000/api/transcribe-and-translate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    audio_data: base64Audio,
+                    source_language: sourceLang,
+                    target_language: targetLang
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Audio processing failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('Audio processing result:', data);
+            
+            if (data.transcribed_text && data.transcribed_text.trim()) {
+                // Update transcripts with the new audio
+                const newTranscript = data.transcribed_text.trim();
+                transcriptRef.current = transcriptRef.current ? `${transcriptRef.current} ${newTranscript}` : newTranscript;
+                setFinalTranscript(transcriptRef.current);
+                
+                // Set the translated text
+                if (data.translated_text) {
+                    setTranslatedText(data.translated_text);
+                }
+                
+                setStatusMessage('🎵 Capturing system audio... (Processing live audio)');
+            } else {
+                setStatusMessage('🎵 Capturing system audio... (Listening for speech)');
+            }
+
+        } catch (error) {
+            console.error('System audio processing error:', error);
+            setStatusMessage(`Error processing audio: ${error.message}`);
         }
     };
 
@@ -456,27 +753,39 @@ function TranslatorApp({ isExtension = false, platformName = 'Meeting Platform' 
         };
     }, [sourceLang, targetLang, shouldContinueListening]); // Remove finalTranscript and isListening from dependencies
 
-    // Start/Stop button handler
-    const toggleListen = () => {
+    // Start/Stop button handler - Modified to handle both capture modes
+    const toggleListen = async () => {
         if (!SpeechRecognition || !recognitionRef.current) return;
         
         const recognition = recognitionRef.current;
         
-        if (isListening || shouldContinueListening) {
-            // Stop listening completely
+        if (isListening || shouldContinueListening || isCapturing) {
+            // Stop all listening/capturing
             setShouldContinueListening(false);
             recognition.stop();
+            stopAudioCapture();
             setIsListening(false);
-            setStatusMessage('Stopped listening.');
+            setStatusMessage('Stopped.');
         } else {
-            // Start continuous listening
-            setShouldContinueListening(true);
-            // Reset state for a new session
-            setFinalTranscript('');
-            setTranslatedText('');
-            transcriptRef.current = '';
-            recognition.lang = speechRecognitionLanguages[sourceLang] || 'en-US';
-            recognition.start();
+            try {
+                if (captureMode === 'system') {
+                    // Start system audio capture with processing callback
+                    setStatusMessage('🔄 Starting system audio capture...');
+                    await startSystemAudioCapture(handleSystemAudioProcessing);
+                    setStatusMessage('🎵 Capturing system audio. Processing speech from all participants...');
+                } else {
+                    // Start microphone capture (existing functionality)
+                    setShouldContinueListening(true);
+                    // Reset state for a new session
+                    setFinalTranscript('');
+                    setTranslatedText('');
+                    transcriptRef.current = '';
+                    recognition.lang = speechRecognitionLanguages[sourceLang] || 'en-US';
+                    recognition.start();
+                }
+            } catch (error) {
+                setStatusMessage(`❌ Error: ${error.message}`);
+            }
         }
     };
 
@@ -509,6 +818,53 @@ function TranslatorApp({ isExtension = false, platformName = 'Meeting Platform' 
                     </p>
                 </header>
 
+                {/* Audio Source Selection */}
+                <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-700">
+                    <h3 className="text-lg font-semibold mb-3 text-gray-800 dark:text-white">Audio Source</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <label className="flex items-center space-x-3 cursor-pointer">
+                            <input
+                                type="radio"
+                                name="captureMode"
+                                value="microphone"
+                                checked={captureMode === 'microphone'}
+                                onChange={(e) => handleCaptureModeChange(e.target.value)}
+                                className="w-4 h-4 text-blue-600"
+                            />
+                            <div>
+                                <div className="font-medium text-gray-800 dark:text-white">🎤 Microphone</div>
+                                <div className="text-sm text-gray-600 dark:text-gray-400">Capture your own voice</div>
+                            </div>
+                        </label>
+                        <label className="flex items-center space-x-3 cursor-pointer">
+                            <input
+                                type="radio"
+                                name="captureMode"
+                                value="system"
+                                checked={captureMode === 'system'}
+                                onChange={(e) => handleCaptureModeChange(e.target.value)}
+                                className="w-4 h-4 text-blue-600"
+                            />
+                            <div>
+                                <div className="font-medium text-gray-800 dark:text-white">🖥️ System Audio</div>
+                                <div className="text-sm text-gray-600 dark:text-gray-400">Capture meeting audio</div>
+                            </div>
+                        </label>
+                    </div>
+                    
+                    {captureMode === 'system' && (
+                        <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
+                            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                                <strong>📋 Instructions:</strong> When prompted, select "Share system audio" or your meeting tab/window. 
+                                This captures all participants' audio for translation.
+                            </p>
+                            <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                                ⚠️ Note: System audio requires server-side speech processing for full functionality.
+                            </p>
+                        </div>
+                    )}
+                </div>
+
                 {/* Language Selection */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                     <div>
@@ -535,20 +891,26 @@ function TranslatorApp({ isExtension = false, platformName = 'Meeting Platform' 
                         id="start-btn" 
                         onClick={toggleListen}
                         className={`px-8 py-4 text-white font-semibold rounded-full shadow-lg focus:outline-none focus:ring-4 transition-all duration-300 ease-in-out transform hover:scale-105 flex items-center justify-center mx-auto ${
-                            shouldContinueListening || isListening
+                            shouldContinueListening || isListening || isCapturing
                             ? 'bg-red-600 hover:bg-red-700 focus:ring-red-300 dark:focus:ring-red-800' 
                             : 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-300 dark:focus:ring-blue-800'
                         }`}
                     >
-                        {shouldContinueListening || isListening ? (
+                        {shouldContinueListening || isListening || isCapturing ? (
                             <>
                                 <svg className="w-6 h-6 mr-3 animate-pulse" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16z" clipRule="evenodd"></path></svg>
-                                <span>Stop Translating</span>
+                                <span>Stop {captureMode === 'system' ? 'Capturing' : 'Listening'}</span>
                             </>
                         ) : (
                             <>
-                                <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
-                                <span>Start Translating</span>
+                                <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    {captureMode === 'system' ? (
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                    ) : (
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                                    )}
+                                </svg>
+                                <span>Start {captureMode === 'system' ? 'Capturing' : 'Listening'}</span>
                             </>
                         )}
                     </button>

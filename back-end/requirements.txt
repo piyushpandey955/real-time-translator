@@ -7,3 +7,5 @@ torch
 sentencepiece
 accelerate
 deepmultilingualpunctuation
+openai-whisper
+ffmpeg-python
