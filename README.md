@@ -1,153 +1,227 @@
-# 🌍 Real-Time Translator: Deployment Guide
+# 🌍 Real-Time Translator
 
-## Quick Start 🚀
+A modern, real-time speech-to-text translation application available as both a web app and Chrome extension. Built with React, FastAPI, and advanced speech recognition technology.
 
-### 1. Start the Backend Server
+## ✨ Features
+
+- **🎤 Real-time Speech Recognition**: Live audio capture with Web Speech API
+- **🌐 50+ Language Support**: Comprehensive language coverage for translation and speech recognition
+- **� Dual Platform**: Web application and Chrome extension with unified UI
+- **🌙 Dark Mode Support**: Automatic dark/light theme detection
+- **📱 Responsive Design**: Works seamlessly across desktop and mobile devices
+- **🚀 Fast Translation**: Powered by Facebook's NLLB-200 model via FastAPI backend
+- **🎯 Meeting Integration**: Chrome extension injects into Google Meet, Zoom, Teams, and more
+- **🔒 Privacy-First**: No data storage, local speech processing
+
+## 🚀 Quick Start
+
+### 1. Backend Setup
 ```bash
 cd back-end
+python -m venv venv
 source venv/bin/activate  # On macOS/Linux
-# OR
-# venv\Scripts\activate   # On Windows
+# OR venv\Scripts\activate   # On Windows
+pip install -r requirements.txt
 python main.py
 ```
-**Backend will run on:** `http://localhost:8000`
+**Backend runs on:** `http://localhost:8000`
 
-### 2. Choose Your Deployment
-
-#### Option A: Web App (Standalone Website) 🌐
+### 2. Frontend Setup
 ```bash
-# Open the web app directly
-open front-end/web-app.html
-# OR serve it locally
 cd front-end
-python -m http.server 8080
-# Then visit: http://localhost:8080/web-app.html
+npm install
 ```
 
-#### Option B: Chrome Extension (Meeting Integration) 📱
-1. Open Chrome and go to `chrome://extensions/`
-2. Enable "Developer mode"
-3. Click "Load unpacked" 
-4. Select the `front-end/dist/` folder
-5. Extension installed! Click the icon when on meeting sites
+### 3. Choose Your Platform
 
-## Project Structure 📁
+#### Option A: Web Application 🌐
+```bash
+npm run dev
+# Opens: http://localhost:5173
+```
+
+#### Option B: Chrome Extension 📱
+```bash
+npm run build:extension
+```
+1. Open Chrome → `chrome://extensions/`
+2. Enable "Developer mode"
+3. Click "Load unpacked"
+4. Select the `front-end/dist/` folder
+5. Extension ready! 🎉
+
+## 📁 Project Structure
 
 ```
 real-time-translator/
-├── back-end/                  # FastAPI Translation Server
-│   ├── main.py               # Main server file
-│   ├── requirements.txt      # Python dependencies
-│   ├── .env                  # Environment variables
-│   └── venv/                 # Virtual environment
+├── back-end/                    # FastAPI Translation Server
+│   ├── main.py                 # FastAPI server with NLLB integration
+│   ├── requirements.txt        # Python dependencies
+│   ├── .env                    # Environment variables (gitignored)
+│   └── venv/                   # Virtual environment (gitignored)
 │
-├── front-end/                # React Frontend & Build System
-│   ├── src/                  # React source code
-│   │   ├── App.jsx          # Main React component
-│   │   ├── content.js       # Extension content script
-│   │   └── popup.js         # Extension popup script
+├── front-end/                  # React Frontend & Build System
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── TranslatorApp.jsx    # Main translation component
+│   │   │   ├── LanguageSelector.jsx # Language selection component
+│   │   │   └── TranslationPanel.jsx # Translation display component
+│   │   ├── App.jsx             # Web app entry point
+│   │   ├── main.jsx            # React DOM setup
+│   │   ├── background.js       # Extension service worker
+│   │   └── content-react.jsx   # Extension content script
 │   │
-│   ├── dist/                 # Chrome Extension Files
-│   │   ├── manifest.json    # Extension manifest
-│   │   ├── content.js       # Injected translator
-│   │   ├── popup.html       # Extension popup
-│   │   └── popup.js         # Popup functionality
-│   │
-│   ├── web-app.html         # Standalone Web App
-│   ├── popup.html           # Extension popup template
-│   ├── package.json         # Node.js dependencies
-│   └── vite.config.js       # Build configuration
+│   ├── dist/                   # Extension build output (gitignored)
+│   ├── web-build/              # Web app build output (gitignored)
+│   ├── public/                 # Static assets
+│   ├── index.html              # Web app HTML template
+│   ├── popup-simple.html       # Extension popup template
+│   ├── manifest-updated.json   # Extension manifest
+│   ├── package.json            # Node.js dependencies & scripts
+│   ├── vite.config.js          # Vite build configuration
+│   └── tailwind.config.js      # Tailwind CSS configuration
 │
-├── DEPLOYMENT_PLAN.md        # Detailed deployment strategy
-└── README.md                 # This file
+├── .gitignore                  # Git ignore patterns
+├── DEPLOYMENT_PLAN.md          # Deployment strategies
+└── README.md                   # This file
 ```
 
-## Build Commands 🔨
+## 🔨 Build Commands
 
-### Web App Build
+### Development
 ```bash
 cd front-end
-npm run build:web    # Builds to web-build/ folder
-npm run preview:web  # Preview web app build
+npm run dev              # Start development server (web app)
+npm run dev:extension    # Watch mode for extension development
 ```
 
-### Extension Build
+### Production Builds
 ```bash
-cd front-end
-npm run build:extension  # Builds to dist/ folder (Chrome extension)
+# Web App
+npm run build:web        # Build web app → web-build/
+npm run preview:web      # Preview web app build
+
+# Chrome Extension  
+npm run build:extension  # Build extension → dist/
+npm run quick:extension  # Quick build with success message
+
+# Build Everything
+npm run build:all        # Build both web app and extension
 ```
 
-### Build Both
-```bash
-cd front-end
-npm run build:all    # Builds both web app and extension
-```
+## 🛠️ Technology Stack
 
-## Features Comparison 📊
+### Frontend
+- **React 19** - Modern React with latest features
+- **Vite 7** - Lightning-fast build tool and dev server
+- **Tailwind CSS 4** - Utility-first CSS framework
+- **Lucide React** - Modern icon library
+- **Web Speech API** - Browser speech recognition
+
+### Backend
+- **FastAPI** - Modern Python web framework
+- **NLLB-200** - Facebook's multilingual translation model
+- **CORS Middleware** - Cross-origin request handling
+- **Uvicorn** - Lightning-fast ASGI server
+
+### Browser Extension
+- **Manifest V3** - Latest Chrome extension API
+- **Content Scripts** - Page injection capabilities
+- **Service Worker** - Background processing
+
+## 📊 Features Comparison
 
 | Feature | Web App 🌐 | Chrome Extension 📱 |
 |---------|-------------|---------------------|
-| **Access Method** | Direct URL | Browser extension |
-| **Installation** | None required | One-time install |
-| **Target Use** | General translation | Meeting-focused |
-| **Platform Support** | Any browser | Chrome-based browsers |
-| **Injection Capability** | No | Yes (meets, zoom, etc.) |
-| **Offline Access** | Limited | Better caching |
-| **Sharing** | Easy (just share URL) | Requires installation |
-| **Updates** | Automatic | Manual extension updates |
+| **Access Method** | Direct browser URL | Browser extension popup |
+| **Installation** | None required | One-time Chrome installation |
+| **UI/UX** | Full-screen experience | Compact popup interface |
+| **Target Use** | General translation tasks | Meeting/conference integration |
+| **Platform Support** | Any modern browser | Chrome-based browsers |
+| **Page Integration** | Standalone application | Injects into meeting platforms |
+| **Offline Capability** | Limited (cached assets) | Better caching & background processing |
+| **Updates** | Automatic on page refresh | Manual extension updates |
+| **Sharing** | Easy (just share URL) | Requires individual installation |
+| **Speech Recognition** | ✅ 50+ languages | ✅ 50+ languages |
+| **Real-time Translation** | ✅ NLLB-200 model | ✅ NLLB-200 model |
+| **Dark Mode** | ✅ Auto-detection | ✅ Auto-detection |
 
-## Deployment Options 🚀
+## 🌍 Supported Languages
+
+### Speech Recognition (50+ languages)
+- **English** (en-US), **Spanish** (es-ES), **French** (fr-FR)
+- **German** (de-DE), **Italian** (it-IT), **Portuguese** (pt-PT)
+- **Chinese** (zh-CN), **Japanese** (ja-JP), **Korean** (ko-KR)
+- **Arabic** (ar-SA), **Russian** (ru-RU), **Hindi** (hi-IN)
+- And many more...
+
+### Translation (200+ language pairs)
+- Powered by Facebook's NLLB-200 model
+- Supports all major world languages
+- High-quality neural machine translation
+- Optimized for real-time performance
+
+## 🚀 Deployment Options
 
 ### Web App Hosting
-- **GitHub Pages**: Upload web-build/ folder
-- **Netlify**: Connect repo, auto-deploy
-- **Vercel**: Import project, deploy
+- **Vercel**: Connect GitHub repo for auto-deployment
+- **Netlify**: Drag-and-drop `web-build/` folder
+- **GitHub Pages**: Upload build artifacts
 - **Firebase Hosting**: Deploy with CLI
-- **Custom Server**: Serve static files
+- **AWS S3**: Static website hosting
+- **Custom Server**: Serve static files from `web-build/`
 
-### Extension Distribution
-- **Chrome Web Store**: Package and submit
-- **Developer Mode**: Local installation
-- **Enterprise**: Distribute .crx file
-- **Sideloading**: Share unpacked folder
+### Chrome Extension Distribution
+- **Chrome Web Store**: Official distribution (requires developer account)
+- **Developer Mode**: Local installation for testing
+- **Enterprise Distribution**: Internal company deployment
+- **Unpacked Extension**: Share `dist/` folder directly
 
-## Configuration ⚙️
+## ⚙️ Configuration
 
-### Backend Configuration (back-end/.env)
+### Backend Environment (.env)
 ```env
-# CORS settings
-CORS_ORIGINS=http://localhost:3000,http://localhost:8080,chrome-extension://*
-
-# API settings  
+# Server Configuration
 API_PORT=8000
 API_HOST=0.0.0.0
 
-# Model settings (if using different translation service)
+# CORS Settings (update for production)
+CORS_ORIGINS=http://localhost:5173,http://localhost:3000,chrome-extension://*
+
+# Translation Model
 TRANSLATION_SERVICE=nllb
 MODEL_NAME=facebook/nllb-200-distilled-600M
+
+# Optional: Custom model settings
+DEVICE=cpu  # or 'cuda' for GPU acceleration
+MAX_LENGTH=512
 ```
 
-### Extension Configuration
-Update `front-end/manifest-updated.json` as needed:
-- Add more meeting platforms
-- Modify permissions
-- Update icons and branding
+### Extension Manifest (manifest-updated.json)
+- **Meeting Platforms**: Add more domains to `content_scripts.matches`
+- **Permissions**: Modify based on required capabilities
+- **Icons**: Update with custom branding
+- **Version**: Increment for Chrome Web Store updates
 
-## Usage Instructions 📖
+## 📖 Usage Guide
 
-### Web App Usage
-1. **Open**: Visit the web app URL
-2. **Select Languages**: Choose source and target languages  
-3. **Start Speaking**: Click microphone button
-4. **View Translation**: Real-time translation appears
-5. **Copy/Share**: Use built-in copy functionality
+### Web Application
+1. **Launch**: Open the web app URL in your browser
+2. **Select Languages**: Choose source and target languages from dropdowns
+3. **Grant Permissions**: Allow microphone access when prompted
+4. **Start Translation**: Click the microphone button to begin
+5. **Speak Clearly**: Talk into your microphone in the source language
+6. **View Results**: See real-time transcription and translation
+7. **Copy Text**: Use copy buttons to share translations
 
-### Extension Usage
-1. **Join Meeting**: Go to Google Meet, Zoom, Teams, etc.
-2. **Click Extension**: Click translator icon in browser
-3. **Inject Panel**: Click "Inject Translator" 
-4. **Translate**: Use the floating translation panel
-5. **Configure**: Adjust settings as needed
+### Chrome Extension  
+1. **Install Extension**: Load unpacked or install from Chrome Web Store
+2. **Join Meeting**: Navigate to supported meeting platform
+3. **Open Extension**: Click the extension icon in Chrome toolbar
+4. **Inject Translator**: Click "Inject Translator" button
+5. **Position Panel**: Drag the floating translation panel as needed
+6. **Configure**: Select languages and start translating
+7. **Toggle Visibility**: Hide/show panel using extension popup
 
 ## Supported Platforms 🌐
 
@@ -199,72 +273,130 @@ Response: 200 OK
 }
 ```
 
-## Troubleshooting 🔧
+## 🔧 Troubleshooting
 
 ### Common Issues
 
-#### "Backend server not available"
-- Ensure Python server is running on port 8000
-- Check CORS configuration in main.py
-- Verify firewall/antivirus isn't blocking
+#### Backend Connection Issues
+```bash
+# Check if backend is running
+curl http://localhost:8000/health
 
-#### "Speech recognition not supported" 
-- Use Chrome, Safari, or Edge browser
-- Enable microphone permissions
-- Check if HTTPS is required (for production)
+# Restart backend server
+cd back-end
+source venv/bin/activate
+python main.py
+```
 
-#### Extension not loading
-- Enable Developer Mode in chrome://extensions/
-- Check console for JavaScript errors
-- Verify manifest.json syntax
+#### Speech Recognition Problems
+- **Browser Support**: Use Chrome, Safari, or Edge (Firefox has limited support)
+- **HTTPS Requirement**: Production sites need HTTPS for microphone access
+- **Permissions**: Grant microphone access when prompted
+- **Language Selection**: Ensure source language matches speech recognition capabilities
 
-#### Translation not working
-- Check backend server logs
-- Verify language codes are correct
-- Ensure internet connection for NLLB model
+#### Extension Loading Issues
+- **Developer Mode**: Must be enabled in `chrome://extensions/`
+- **Manifest Errors**: Check browser console for syntax errors
+- **File Permissions**: Ensure `dist/` folder has proper read permissions
+- **Cache Issues**: Try hard refresh (Ctrl+F5) or restart Chrome
 
-### Performance Tips
-- Use NLLB models for better translation quality
-- Enable caching for frequently used translations
-- Consider using WebRTC for better audio processing
-- Implement request debouncing for real-time translation
+#### Translation Quality Issues
+- **Model Performance**: NLLB-200 quality varies by language pair
+- **Audio Quality**: Use a good microphone for better speech recognition
+- **Network Latency**: Check internet connection for API calls
+- **Text Length**: Very long texts may take longer to translate
 
-## Development 💻
+#### Styling Problems
+- **Dark Mode**: Should auto-detect based on system preferences
+- **Layout Issues**: Try different browser zoom levels
+- **Extension UI**: Ensure content script injection is successful
 
-### Adding New Languages
-1. Update language options in both web app and extension
-2. Verify NLLB model supports the language
-3. Test translation quality
-4. Update documentation
+### Performance Optimization
 
-### Adding New Meeting Platforms
-1. Add domain to extension manifest
-2. Update platform detection in content.js
-3. Add platform-specific selectors
-4. Test injection functionality
+#### Backend Performance
+```python
+# For GPU acceleration (if available)
+DEVICE=cuda
 
-### Custom Styling
-- Modify CSS variables in web-app.html
-- Update extension styles in content.js
-- Maintain consistent branding across both versions
+# Increase worker processes (production)
+uvicorn main:app --workers 4
 
-## Security & Privacy 🔒
+# Enable model caching
+MODEL_CACHE=true
+```
 
-- **No data storage**: Translations are not stored
-- **Local processing**: Speech recognition runs locally
-- **HTTPS recommended**: For production deployments  
-- **Permission minimal**: Extension uses minimal permissions
-- **Open source**: Code is transparent and auditable
+#### Frontend Performance
+- **Audio Processing**: Web Speech API runs locally (no server load)
+- **Translation Caching**: Implement client-side caching for repeated phrases
+- **Network Optimization**: Use request debouncing for real-time input
+- **Bundle Size**: Extension build is optimized for minimal size
 
-## Support & Contributing 🤝
+## 🛡️ Security & Privacy
 
-- **Issues**: Report bugs via GitHub issues
-- **Features**: Request new features
-- **Pull Requests**: Contributions welcome
-- **Documentation**: Help improve docs
+### Data Handling
+- **No Storage**: Audio and translations are not stored anywhere
+- **Local Processing**: Speech recognition happens in the browser
+- **API Security**: Translation API only processes text temporarily
+- **No Tracking**: No analytics or user tracking implemented
+
+### Browser Permissions
+- **Microphone**: Required for speech recognition
+- **Active Tab**: Extension needs access to inject translator
+- **Host Permissions**: Limited to specified meeting platforms
+- **Storage**: Minimal local storage for user preferences
+
+### Production Security
+- **HTTPS**: Required for microphone access in production
+- **CORS**: Configure appropriate origins for your domain
+- **API Rate Limiting**: Consider implementing for public deployments
+- **Content Security Policy**: Update for your hosting environment
+
+## 🤝 Contributing
+
+### Development Setup
+```bash
+# Clone repository
+git clone <repository-url>
+cd real-time-translator
+
+# Backend setup
+cd back-end
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Frontend setup
+cd ../front-end
+npm install
+npm run dev
+```
+
+### Code Style
+- **React**: Follow React 19 best practices
+- **Python**: PEP 8 style guide
+- **JavaScript**: ESLint configuration included
+- **CSS**: Tailwind utility classes preferred
+
+### Pull Request Guidelines
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Test your changes thoroughly
+4. Update documentation as needed
+5. Submit a pull request with clear description
+
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/your-repo/issues)
+- **Documentation**: This README and inline code comments
+- **Community**: Contribute to make it better!
 
 ---
 
-**Ready to break language barriers?** 🌍✨
+## 🎉 Ready to Get Started?
 
-Choose your deployment method and start translating! Both the web app and Chrome extension are production-ready and optimized for their respective use cases.
+1. **Quick Test**: `npm run dev` for web app development
+2. **Extension**: `npm run build:extension` for Chrome extension
+3. **Production**: Deploy web app to your favorite hosting platform
+4. **Share**: Help others break language barriers! 🌍✨
+
+**Break language barriers with real-time translation!** 🚀
