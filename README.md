@@ -1,4 +1,15 @@
-# 🌍 Real-Time Translator
+# 🌍 Real-Time Speech Translator
+
+A modern, real-time speech-to-text translation application built with React, FastAPI, and advanced speech recognition technology.
+
+## ✨ Features
+
+- **🎤 Real-time Speech Recognition**: Instant voice-to-text conversion
+- **🌐 Multi-language Translation**: Support for 200+ languages via NLLB-200
+- **🎯 System Audio Capture**: Capture audio from meetings and calls
+- **📝 Punctuation Restoration**: AI-powered punctuation for natural text
+- **⚡ Fast Processing**: Optimized for real-time performance
+- **🎨 Modern UI**: Clean, responsive design with dark mode support Translator
 
 A modern, real-time speech-to-text translation application available as both a web app and Chrome extension. Built with React, FastAPI, and advanced speech recognition technology.
 
@@ -7,12 +18,6 @@ A modern, real-time speech-to-text translation application available as both a w
 - **🎤 Real-time Speech Recognition**: Live audio capture with Web Speech API
 - **🌐 50+ Language Support**: Comprehensive language coverage for translation and speech recognition
 - **� Dual Platform**: Web application and Chrome extension with unified UI
-- **🌙 Dark Mode Support**: Automatic dark/light theme detection
-- **📱 Responsive Design**: Works seamlessly across desktop and mobile devices
-- **🚀 Fast Translation**: Powered by Facebook's NLLB-200 model via FastAPI backend
-- **🎯 Meeting Integration**: Chrome extension injects into Google Meet, Zoom, Teams, and more
-- **🔒 Privacy-First**: No data storage, local speech processing
-
 ## 🚀 Quick Start
 
 ### 1. Backend Setup
@@ -30,26 +35,9 @@ python main.py
 ```bash
 cd front-end
 npm install
-```
-
-### 3. Choose Your Platform
-
-#### Option A: Web Application 🌐
-```bash
 npm run dev
 # Opens: http://localhost:5173
 ```
-
-#### Option B: Chrome Extension 📱
-```bash
-npm run build:extension
-```
-1. Open Chrome → `chrome://extensions/`
-2. Enable "Developer mode"
-3. Click "Load unpacked"
-4. Select the `front-end/dist/` folder
-5. Extension ready! 🎉
-
 ## 📁 Project Structure
 
 ```
@@ -60,29 +48,23 @@ real-time-translator/
 │   ├── .env                    # Environment variables (gitignored)
 │   └── venv/                   # Virtual environment (gitignored)
 │
-├── front-end/                  # React Frontend & Build System
+├── front-end/                  # React Frontend
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── TranslatorApp.jsx    # Main translation component
 │   │   │   ├── LanguageSelector.jsx # Language selection component
 │   │   │   └── TranslationPanel.jsx # Translation display component
 │   │   ├── App.jsx             # Web app entry point
-│   │   ├── main.jsx            # React DOM setup
-│   │   ├── background.js       # Extension service worker
-│   │   └── content-react.jsx   # Extension content script
+│   │   └── main.jsx            # React DOM setup
 │   │
-│   ├── dist/                   # Extension build output (gitignored)
-│   ├── web-build/              # Web app build output (gitignored)
+│   ├── dist/                   # Build output (gitignored)
 │   ├── public/                 # Static assets
 │   ├── index.html              # Web app HTML template
-│   ├── popup-simple.html       # Extension popup template
-│   ├── manifest-updated.json   # Extension manifest
 │   ├── package.json            # Node.js dependencies & scripts
 │   ├── vite.config.js          # Vite build configuration
 │   └── tailwind.config.js      # Tailwind CSS configuration
 │
 ├── .gitignore                  # Git ignore patterns
-├── DEPLOYMENT_PLAN.md          # Deployment strategies
 └── README.md                   # This file
 ```
 
@@ -91,22 +73,13 @@ real-time-translator/
 ### Development
 ```bash
 cd front-end
-npm run dev              # Start development server (web app)
-npm run dev:extension    # Watch mode for extension development
+npm run dev              # Start development server
 ```
 
-### Production Builds
+### Production Build
 ```bash
-# Web App
-npm run build:web        # Build web app → web-build/
-npm run preview:web      # Preview web app build
-
-# Chrome Extension  
-npm run build:extension  # Build extension → dist/
-npm run quick:extension  # Quick build with success message
-
-# Build Everything
-npm run build:all        # Build both web app and extension
+npm run build            # Build for production → dist/
+npm run preview          # Preview production build
 ```
 
 ## 🛠️ Technology Stack

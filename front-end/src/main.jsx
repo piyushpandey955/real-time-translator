@@ -3,13 +3,8 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import './index.css';
 
-// Check if we're in extension mode (content script environment)
-const isExtension = document.getElementById('react-translator-root');
-
-// Use appropriate root element
-const rootElement = isExtension 
-  ? document.getElementById('react-translator-root')
-  : document.getElementById('root');
+// Get the root element for the web app
+const rootElement = document.getElementById('root');
 
 // Ensure the root element exists before rendering
 if (rootElement) {
@@ -19,5 +14,5 @@ if (rootElement) {
     </React.StrictMode>,
   );
 } else {
-  console.error('Root element not found. Expected "root" for web app or "react-translator-root" for extension.');
+  console.error('Root element "root" not found.');
 }

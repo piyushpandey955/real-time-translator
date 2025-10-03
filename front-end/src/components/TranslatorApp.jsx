@@ -512,7 +512,7 @@ const useAudioCapture = () => {
     };
 };
 
-function TranslatorApp({ isExtension = false, platformName = 'Meeting Platform' }) {
+function TranslatorApp() {
     // State management
     const [sourceLang, setSourceLang] = useState('English');
     const [targetLang, setTargetLang] = useState('Spanish');
@@ -797,24 +797,20 @@ function TranslatorApp({ isExtension = false, platformName = 'Meeting Platform' 
         setStatusMessage('Translations cleared. Ready to start.');
     };
 
-    // Use same styling for both extension and web app
-    const containerClasses = isExtension 
-        ? "bg-white text-gray-900 p-4 font-sans"
-        : "bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex items-center justify-center min-h-screen p-4 font-sans transition-colors duration-500";
-    const cardClasses = isExtension
-        ? "w-full bg-white rounded-lg p-4"
-        : "w-full max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 sm:p-8";
+    // Web app styling
+    const containerClasses = "bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex items-center justify-center min-h-screen p-4 font-sans transition-colors duration-500";
+    const cardClasses = "w-full max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 sm:p-8";
 
-    // Return same UI for both extension and web app
+    // Return web app UI
     return (
         <div className={containerClasses}>
             <div className={cardClasses}>
                 <header className="text-center mb-6 sm:mb-8">
                     <h1 className="text-3xl sm:text-4xl font-bold text-gray-800 dark:text-white">
-                        {isExtension ? `${platformName} Translator` : 'Real-Time Speech Translator'}
+                        Real-Time Speech Translator
                     </h1>
                     <p className="text-gray-500 dark:text-gray-400 mt-2">
-                        {isExtension ? 'Live translation for your meetings and calls.' : 'Speak and get instant translations. Powered by React & FastAPI.'}
+                        Speak and get instant translations. Powered by React & FastAPI.
                     </p>
                 </header>
 

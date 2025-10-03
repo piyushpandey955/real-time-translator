@@ -5,16 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:extension": "vite build --mode extension --watch && npm run copy:extension",
     "build": "vite build",
-    "build:web": "vite build --mode production",
-    "build:extension": "vite build --mode extension && npm run copy:extension",
-    "copy:extension": "mkdir -p dist && cp -r extension-build/* dist/ && cp popup-simple.html dist/popup.html && cp manifest-updated.json dist/manifest.json",
-    "build:all": "npm run build:web && npm run build:extension",
-    "quick:extension": "npm run build:extension && echo '🚀 Extension built! Load from: front-end/dist/'",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "preview:web": "vite preview --outDir web-build"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.13",
