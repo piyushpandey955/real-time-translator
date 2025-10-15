@@ -442,8 +442,8 @@ async def startup_event():
     """Load models when the server starts"""
     print("🚀 Server starting up...")
     # Pre-load models (optional)
-    # get_punctuation_model()
-    # get_nllb_translator()
+    get_punctuation_model()
+    get_nllb_translator()
     print("✅ Server startup complete")
 
 if __name__ == "__main__":
